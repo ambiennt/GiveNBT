@@ -17,5 +17,7 @@ Something important to note about the enchantment string parameter is the delimi
 List of bedrock edition item IDs:
 https://minecraft.fandom.com/wiki/Bedrock_Edition_data_values
 
+If you wish to give yourself a custom item, the ID will start at 802 (next number after the highest item ID, soul campfire, which is 801). Mutliple custom items will add to the item ID registry in alphabetical order.
+
 List of bedrock edition enchantment IDs:
 https://www.digminecraft.com/lists/enchantment_list_pe.php

@@ -125,6 +125,7 @@ public:
     case Enchant::Type::multishot: return "multishot";
     case Enchant::Type::piercing: return "piercing";
     case Enchant::Type::quick_charge: return "quick_charge";
+    case Enchant::Type::soul_speed: return "soul_speed";
     default: return "unknown";
     }
   }

@@ -6,6 +6,7 @@
 #include <mods/CommandSupport.h>
 #include <Item/ItemStack.h>
 #include <Item/Item.h>
+#include <Packet/TextPacket.h>
 
 #include "Enchant.h"
 #include "EnchantResult.h"

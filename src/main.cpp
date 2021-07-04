@@ -51,8 +51,7 @@ public:
 
   class CommandItem {
     public:
-
-      //necessary initializations
+      //more initializations
       int version = 0;
       int id = 0;
       ItemStackBase *createInstance(ItemStackBase *is, int count, int aux, CommandOutput &output, bool exactAux) {
@@ -125,13 +124,7 @@ public:
     }
   }
 
-  void giveItem(Player *player, CommandOutput &output, CommandItem &cmi, ItemStack &is) {
-
-    bool hasEnchantments = checkEnchantmentString(enchantments, output);
-    bool hasName = !name.empty();
-    //bool hasLore = !lore1.empty() || !lore2.empty() || !lore3.empty(); || !lore4.empty(); || !lore5.empty();
-    std::string lore[5] = { lore1, lore2, lore3, lore4, lore5 };
-    bool hasLore = !std::all_of(lore, std::end(lore), LIFT(std::empty));
+  void giveItem(Player *player, CommandOutput &output, CommandItem &cmi, ItemStack &is, bool hasEnchantments, bool hasName, bool hasLore) {
 
     //loop through count to give more than 1 stack of the item
     const int playerInventorySlots = 36;
@@ -184,24 +177,30 @@ public:
 
     //update inventory to the client
     CallServerClassMethod<void>("?sendInventory@ServerPlayer@@UEAAX_N@Z", player, false);
-    output.success("§a[GiveNBT]§r You have been given * " + std::to_string(count) + " of item with ID " + std::to_string(id) + ":" + std::to_string(aux));
+    auto receivedItemMessage = TextPacket::createTextPacket<TextPacketType::SystemMessage>(
+      "§a[GiveNBT]§r You have been given * " + std::to_string(count) + " of item with ID " + std::to_string(id) + ":" + std::to_string(aux));
+    player->sendNetworkPacket(receivedItemMessage);
   }
 
   void execute(CommandOrigin const &origin, CommandOutput &output) {
+
+    std::string stringifiedId = std::to_string(id);
+    std::string stringifiedCount = std::to_string(count);
+    std::string stringifiedAux = std::to_string(aux);
     if (count <= 0) {
-      output.error("The count you have entered (" + std::to_string(count) + ") is too small, it must be at least 1");
+      output.error("The count you have entered (" + stringifiedCount + ") is too small, it must be at least 1");
       return;
     }
     else if (count > 32767) {
-      output.error("The count you have entered (" + std::to_string(count) + ") is too big, it must be at most 32767");
+      output.error("The count you have entered (" + stringifiedCount + ") is too big, it must be at most 32767");
       return;
     }
     else if (aux < 0) {
-      output.error("The aux value you have entered (" + std::to_string(aux) + ") is too small, it must be at least 0");
+      output.error("The aux value you have entered (" + stringifiedAux + ") is too small, it must be at least 0");
       return;
     }
     else if (aux > 32767) {
-      output.error("The aux value you have entered (" + std::to_string(aux) + ") is too big, it must be at most 32767");
+      output.error("The aux value you have entered (" + stringifiedAux + ") is too big, it must be at most 32767");
       return;
     }
 
@@ -224,11 +223,19 @@ public:
       return;
     }
 
+    bool hasEnchantments = checkEnchantmentString(enchantments, output);
+    bool hasName = !name.empty();
+    //bool hasLore = !lore1.empty() || !lore2.empty() || !lore3.empty(); || !lore4.empty(); || !lore5.empty();
+    std::string lore[5] = { lore1, lore2, lore3, lore4, lore5 };
+    bool hasLore = !std::all_of(lore, std::end(lore), LIFT(std::empty));
+
     //loop through selector results
     //pass in CommandItem and ItemStack from empty instance
     for (auto player : selectedEntities) {
-      giveItem(player, output, cmi, is);
+      giveItem(player, output, cmi, is, hasEnchantments, hasName, hasLore);
     }
+    output.success(
+      "§a[GiveNBT]§r Gave * " + stringifiedCount + " of item with ID " + stringifiedId + ":" + stringifiedAux + " to " + std::to_string(selectedEntities.count()) + (selectedEntities.count() == 1 ? " player" : " players"));
   }
   static void setup(CommandRegistry *registry) {
     using namespace commands;

@@ -51,7 +51,8 @@ public:
     channeling            = 32,
     multishot             = 33,
     piercing              = 34,
-    quick_charge          = 35
+    quick_charge          = 35,
+    soul_speed            = 36
   };
   enum struct Frequency {};
   enum struct Slot {};

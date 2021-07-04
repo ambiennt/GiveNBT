@@ -91,7 +91,7 @@ public:
   void getEnchantmentsFromString(const char* string, std::vector<Enchantment>& out_split) {
     while (string[0] != 0) { //while its not the end of the string
       Enchantment newEnchantment;
-      newEnchantment.id = std::clamp(std::atoi(string), 0, 35); //convert to ascii to number, clamp to vanilla enchantment ids
+      newEnchantment.id = std::clamp(std::atoi(string), 0, 36); //convert to ascii to number, clamp to vanilla enchantment ids
       while (string[0] != 0 && string[0] != ':' && string[0] != ',') {
         string++;
       }

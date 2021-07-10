@@ -12,5 +12,3 @@
 #include "EnchantResult.h"
 
 DEF_LOGGER("GiveNbt");
-
-void initCommand(CommandRegistry *registry);

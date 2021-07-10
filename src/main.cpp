@@ -10,9 +10,7 @@
     -> decltype(__VA_ARGS__(FWD(args)...)) \
   { return __VA_ARGS__(FWD(args)...); }
 
-void PreInit() {
-  Mod::CommandSupport::GetInstance().AddListener(SIG("loaded"), initCommand);
-}
+void PreInit() {}
 void PostInit() {}
 void dllenter() {}
 void dllexit() {}
@@ -257,6 +255,9 @@ public:
   }
 };
 
-void initCommand(CommandRegistry *registry) {
-  GiveNbtCommand::setup(registry);
+//new method allows commands to work in function files
+TClasslessInstanceHook(void, "?load@FunctionManager@@QEAAXAEAVResourcePackManager@@AEAVCommandRegistry@@@Z",
+  class ResourcePackManager &rpManager, class CommandRegistry &registry) {
+    GiveNbtCommand::setup(&registry);
+    original(this, rpManager, registry);
 }

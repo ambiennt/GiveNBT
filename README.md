@@ -15,7 +15,7 @@ output:
 <br/><br/><br/>
   
 ### replaceitemnbt syntax:
-#### /replaceitemnbt <target: target> <slot type: int> <slot id: int> <item id: int> [count: int] [aux value: int] [enchantments: string] [custom name: string] [lore line 1: string] [lore line 2: string] [lore line 3: string] [lore line 4: string] [lore line 5: string]
+#### /replaceitemnbt <target: target> \<slot type: int\> \<slot id: int\> \<item id: int\> [count: int] [aux value: int] [enchantments: string] [custom name: string] [lore line 1: string] [lore line 2: string] [lore line 3: string] [lore line 4: string] [lore line 5: string]
 
 The 2 necessary parameters to this command are the target selector (players only), the slot type, slot ID, and item ID. The available slot types and their corresponding IDs are as follows:
 

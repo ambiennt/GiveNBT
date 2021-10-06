@@ -2,9 +2,9 @@
 ## give and replace items with custom NBT on BDS + ElementZero 1.16.20-.40
 
 ### givenbt syntax:
-#### /givenbt <target: target> <item id: int> [count: int] [aux value: int] [enchantments: string] [custom name: string] [lore line 1: string] [lore line 2: string] [lore line 3: string] [lore line 4: string] [lore line 5: string]
+#### /givenbt \<target: target\> \<itemId: int\> [count: int] [auxValue: int] [toEnderChest: boolean] [enchantments: string] [customName: string] [loreLine1: string] [loreLine2: string] [loreLine3: string] [loreLine4: string] [loreLine5: string]
 
-The 2 necessary parameters to this command are the target selector (players only) and the item ID. Even without adding NBT, this command may still be useful to give illegal items to players, because the command checks for the numerical item ID instead of its string name.
+The 2 necessary parameters to this command are the target selector (players only) and the item ID. Even without adding NBT, this command may still be useful to give illegal items to players, because the command checks for the numerical item ID instead of its string name. the toEnderChest parameter dictates whether the item(s) will be added to the target's inventory or ender chest.
 
 an example of the command:
 /givenbt @a 247 100 0 "9:20,18:5" "my netherreactor core" "§6This is a special item from minecraft pocket edition!" "§c*note:" "§7this is just a decorative block"
@@ -15,14 +15,9 @@ output:
 <br/><br/><br/>
   
 ### replaceitemnbt syntax:
-#### /replaceitemnbt <target: target> \<slot type: int\> \<slot id: int\> \<item id: int\> [count: int] [aux value: int] [enchantments: string] [custom name: string] [lore line 1: string] [lore line 2: string] [lore line 3: string] [lore line 4: string] [lore line 5: string]
+#### /replaceitemnbt \<target: target\> \<slotType: type\> \<slotId: int\> \<itemId: int\> [count: int] [auxValue: int] [enchantments: string] [customName: string] [loreLine1: string] [loreLine2: string] [loreLine3: string] [loreLine4: string] [loreLine5: string]
 
-The 2 necessary parameters to this command are the target selector (players only), the slot type, slot ID, and item ID. The available slot types and their corresponding IDs are as follows:
-
-  Slot type 0 = mainhand (slot ID 0 only)<br/>
-  Slot type 1 = offhand (slot ID 0 only)<br/>
-  Slot type 2 = armor (slot ID 0-3)<br/>
-  Slot type 3 = inventory (slot ID 0-8 for hotbar, 9-35 for inventory)<br/>
+The 2 necessary parameters to this command are the target selector (players only), the slot type, slot ID, and item ID.
   
 <br/><br/><br/>
   

@@ -114,6 +114,7 @@ public:
     int id = 0;
     int count = 1;
     int aux = 0;
+    bool toEnderChest = false;
     std::string enchantments;
     std::string name;
     std::string lore1;
@@ -130,7 +131,9 @@ public:
         int maxStackSize = is.getMaxStackSize();
         int countNew = count;
         countNew = std::min(countNew, maxStackSize * playerInventorySlots);
-    
+        
+        auto playerEnderChest = player->getEnderChestContainer();
+
         while (countNew > 0) {
             int this_stack = std::min(maxStackSize, countNew);
             cmi.createInstance(&is, this_stack, aux, output, false);
@@ -167,9 +170,14 @@ public:
                 is.setCustomLore(loreVector);
             }
 
-            //if item cannot be added to player inventory, drop item
-            if (!addItem(player, is)) {
-                dropItem(player, is, false);
+            if (toEnderChest) {
+                playerEnderChest->addItemToFirstEmptySlot(is);
+            }
+            else {
+                //drop item if inventory is full
+                if (!addItem(player, is)) {
+                    dropItem(player, is, false);
+                }
             }
         }
 
@@ -234,16 +242,17 @@ public:
             "givenbt", "Gives an item with custom NBT.", CommandPermissionLevel::GameMasters, CommandFlagCheat, CommandFlagNone);
         registry->registerOverload<GiveNbtCommand>("givenbt",
             mandatory(&GiveNbtCommand::selector, "target"),
-            mandatory(&GiveNbtCommand::id, "item id"),
+            mandatory(&GiveNbtCommand::id, "itemId"),
             optional(&GiveNbtCommand::count, "count"),
-            optional(&GiveNbtCommand::aux, "aux value"),
+            optional(&GiveNbtCommand::aux, "auxValue"),
+            optional(&GiveNbtCommand::toEnderChest, "toEnderChest"),
             optional(&GiveNbtCommand::enchantments, "enchantments"),
-            optional(&GiveNbtCommand::name, "custom name"),
-            optional(&GiveNbtCommand::lore1, "lore line 1"),
-            optional(&GiveNbtCommand::lore2, "lore line 2"),
-            optional(&GiveNbtCommand::lore3, "lore line 3"),
-            optional(&GiveNbtCommand::lore4, "lore line 4"),
-            optional(&GiveNbtCommand::lore5, "lore line 5")
+            optional(&GiveNbtCommand::name, "customName"),
+            optional(&GiveNbtCommand::lore1, "lore1"),
+            optional(&GiveNbtCommand::lore2, "lore2"),
+            optional(&GiveNbtCommand::lore3, "lore3"),
+            optional(&GiveNbtCommand::lore4, "lore4"),
+            optional(&GiveNbtCommand::lore5, "lore5")
         );
     }
 };
@@ -253,7 +262,13 @@ public:
     ReplaceItemNbtCommand() { selector.setIncludeDeadPlayers(true); }
 
     CommandSelector<Player> selector;
-    int slotType = 0;
+    enum class SlotType {
+        Mainhand    = 0,
+        Offhand     = 1,
+        Armor       = 2,
+        Inventory   = 3,
+        Enderchest  = 4
+    } type;
     int slotId = 0;
     int id = 0;
     int count = 1;
@@ -265,6 +280,17 @@ public:
     std::string lore3;
     std::string lore4;
     std::string lore5;
+
+    constexpr const char* containerTypeToString(SlotType v) {
+        switch (v) {
+            case SlotType::Mainhand:    return "Mainhand";
+            case SlotType::Offhand:     return "Offhand";
+            case SlotType::Armor:       return "Armor";
+            case SlotType::Inventory:   return "Inventory";
+            case SlotType::Enderchest:  return "Enderchest";
+            default:                    return "Unknown";
+        }
+    }
 
     void giveItem(Player *player, CommandOutput &output, CommandItem &cmi, ItemStack &is,
         bool hasEnchantments, bool hasName, bool hasLore, bool sendCommandFeedback) {
@@ -300,28 +326,36 @@ public:
             is.setCustomLore(loreVector);
         }
 
-        switch (slotType) {
-            case 0: // mainhand
+        switch (type) {
+            case SlotType::Mainhand:
                 player->setCarriedItem(ItemStack::EMPTY_ITEM);
                 player->setCarriedItem(is);
                 break;
 
-            case 1: // offhand
+            case SlotType::Offhand:
                 player->setOffhandSlot(ItemStack::EMPTY_ITEM);
                 player->setOffhandSlot(is);
                 break;
 
-            case 2: // armor slots
+            case SlotType::Armor:
                 player->setArmor((ArmorSlot) slotId, ItemStack::EMPTY_ITEM);
                 player->setArmor((ArmorSlot) slotId, is);
                 break;
 
-            case 3: // hotbar and inventory - 0-8 and 9-35 respectively
+            case SlotType::Inventory: // hotbar and inventory - slot ids 0-8 and 9-35 respectively
                 {     
                     Inventory* playerInventory = CallServerClassMethod<PlayerInventory*>(
                         "?getSupplies@Player@@QEAAAEAVPlayerInventory@@XZ", player)->inventory.get();
                     playerInventory->setItem(slotId, ItemStack::EMPTY_ITEM);
                     playerInventory->setItem(slotId, is);
+                    break;
+                }
+
+            case SlotType::Enderchest:
+                {     
+                    EnderChestContainer* playerEnderChest = player->getEnderChestContainer();
+                    playerEnderChest->setItem(slotId, ItemStack::EMPTY_ITEM);
+                    playerEnderChest->setItem(slotId, is);
                     break;
                 }
             
@@ -332,43 +366,44 @@ public:
 
         if (sendCommandFeedback) {
             auto receivedItemMessage = TextPacket::createTextPacket<TextPacketType::SystemMessage>(
-                "§a[ReplaceItemNBT]§r You have been set with * " + std::to_string(count) + " of item with ID " + std::to_string(id) + ":" + std::to_string(aux) + " in slot " + std::to_string(slotType) + ":" + std::to_string(slotId));
+                "§a[ReplaceItemNBT]§r You have been set with * " + std::to_string(count) + " of item with ID " + std::to_string(id) + ":" + std::to_string(aux) + " in slot " + containerTypeToString(type) + ":" + std::to_string(slotId));
             player->sendNetworkPacket(receivedItemMessage);
         }
     }
 
     void execute(CommandOrigin const &origin, CommandOutput &output) {
 
-        std::string stringifiedSlotType = std::to_string(slotType);
         std::string stringifiedSlotId = std::to_string(slotId);
         std::string stringifiedCount = std::to_string(count);
         std::string stringifiedAux = std::to_string(aux);
-        if (slotType < 0 || slotType > 3) {
-            return output.error("The slot type you have entered (" + stringifiedSlotType + ") is not within the allowed range of 0-3");
-        }
-        else if (count < 1 || count > 64) {
-            return output.error("The count you have entered (" + stringifiedCount + ") is not within the allowed range of 1-64");
-        }
-        else if (aux < 0 || aux > 32767) {
-            return output.error("The aux value you have entered (" + stringifiedAux + ") is not within the allowed range of 0-32767");
-        }
-        switch (slotType) {
-            case 0 ... 1:
+        switch (type) {
+            case SlotType::Mainhand ... SlotType::Offhand:
                 if (slotId != 0) {
                     return output.error("The slot ID you have entered (" + stringifiedSlotId + ") must be exactly 0");
                 }
 
-            case 2:
+            case SlotType::Armor:
                 if (slotId < 0 || slotId > 3) {
                     return output.error("The slot ID you have entered (" + stringifiedSlotId + ") is not within the allowed range of 0-3");
                 }
                 
-            case 3:
+            case SlotType::Inventory:
                 if (slotId < 0 || slotId > 35) {
                     return output.error("The slot ID you have entered (" + stringifiedSlotId + ") is not within the allowed range of 0-35");
                 }
 
+            case SlotType::Enderchest:
+                if (slotId < 0 || slotId > 26) {
+                    return output.error("The slot ID you have entered (" + stringifiedSlotId + ") is not within the allowed range of 0-26");
+                }
+
             default: break;
+        }
+        if (count < 1 || count > 64) {
+            return output.error("The count you have entered (" + stringifiedCount + ") is not within the allowed range of 1-64");
+        }
+        else if (aux < 0 || aux > 32767) {
+            return output.error("The aux value you have entered (" + stringifiedAux + ") is not within the allowed range of 0-32767");
         }
 
         auto selectedEntities = selector.results(origin);
@@ -394,27 +429,36 @@ public:
             giveItem(player, output, cmi, is, hasEnchantments, hasName, hasLore, sendCommandFeedback);
         }
         output.success(
-            "§a[ReplaceItemNBT]§r Set * " + stringifiedCount + " of item with ID " + std::to_string(id) + ":" + stringifiedAux + " in slot " + stringifiedSlotType + ":" + stringifiedSlotId + " for " + std::to_string(selectedEntities.count()) + (selectedEntities.count() == 1 ? " player" : " players"));
+            "§a[ReplaceItemNBT]§r Set * " + stringifiedCount + " of item with ID " + std::to_string(id) + ":" + stringifiedAux + " in slot " + containerTypeToString(type) + ":" + stringifiedSlotId + " for " + std::to_string(selectedEntities.count()) + (selectedEntities.count() == 1 ? " player" : " players"));
     }
 
     static void setup(CommandRegistry *registry) {
         using namespace commands;
         registry->registerCommand(
             "replaceitemnbt", "sets an item with custom NBT in a specified equipment slot.", CommandPermissionLevel::GameMasters, CommandFlagCheat, CommandFlagNone);
+        
+        commands::addEnum<SlotType>(registry, "slotType", {
+            { "slot.weapon.mainhand", SlotType::Mainhand },
+            { "slot.weapon.offhand", SlotType::Offhand },
+            { "slot.armor", SlotType::Armor },
+            { "slot.inventory", SlotType::Inventory },
+            { "slot.enderchest", SlotType::Enderchest },
+        });
+
         registry->registerOverload<ReplaceItemNbtCommand>("replaceitemnbt",
             mandatory(&ReplaceItemNbtCommand::selector, "target"),
-            mandatory(&ReplaceItemNbtCommand::slotType, "slot type"),
-            mandatory(&ReplaceItemNbtCommand::slotId, "slot id"),
-            mandatory(&ReplaceItemNbtCommand::id, "item id"),
+            mandatory<CommandParameterDataType::ENUM>(&ReplaceItemNbtCommand::type, "type", "slotType"),
+            mandatory(&ReplaceItemNbtCommand::slotId, "slotId"),
+            mandatory(&ReplaceItemNbtCommand::id, "itemId"),
             optional(&ReplaceItemNbtCommand::count, "count"),
-            optional(&ReplaceItemNbtCommand::aux, "aux value"),
+            optional(&ReplaceItemNbtCommand::aux, "auxValue"),
             optional(&ReplaceItemNbtCommand::enchantments, "enchantments"),
-            optional(&ReplaceItemNbtCommand::name, "custom name"),
-            optional(&ReplaceItemNbtCommand::lore1, "lore line 1"),
-            optional(&ReplaceItemNbtCommand::lore2, "lore line 2"),
-            optional(&ReplaceItemNbtCommand::lore3, "lore line 3"),
-            optional(&ReplaceItemNbtCommand::lore4, "lore line 4"),
-            optional(&ReplaceItemNbtCommand::lore5, "lore line 5")
+            optional(&ReplaceItemNbtCommand::name, "customName"),
+            optional(&ReplaceItemNbtCommand::lore1, "lore1"),
+            optional(&ReplaceItemNbtCommand::lore2, "lore2"),
+            optional(&ReplaceItemNbtCommand::lore3, "lore3"),
+            optional(&ReplaceItemNbtCommand::lore4, "lore4"),
+            optional(&ReplaceItemNbtCommand::lore5, "lore5")
         );
     }
 };

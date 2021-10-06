@@ -2,7 +2,7 @@
 ## give and replace items with custom NBT on BDS + ElementZero 1.16.20-.40
 
 ### givenbt syntax:
-#### /givenbt \<target: target\> \<itemId: int\> [count: int] [auxValue: int] [toEnderChest: boolean] [enchantments: string] [customName: string] [loreLine1: string] [loreLine2: string] [loreLine3: string] [loreLine4: string] [loreLine5: string]
+#### /givenbt \<target: target\> \<itemId: int\> [count: int] [auxValue: int] [toEnderChest: boolean] [enchantments: string] [customName: string] [lore1: string] [lore2: string] [lore3: string] [lore4: string] [lore5: string]
 
 The 2 necessary parameters to this command are the target selector (players only) and the item ID. Even without adding NBT, this command may still be useful to give illegal items to players, because the command checks for the numerical item ID instead of its string name. the toEnderChest parameter dictates whether the item(s) will be added to the target's inventory or ender chest.
 
@@ -15,7 +15,7 @@ output:
 <br/><br/><br/>
   
 ### replaceitemnbt syntax:
-#### /replaceitemnbt \<target: target\> \<slotType: type\> \<slotId: int\> \<itemId: int\> [count: int] [auxValue: int] [enchantments: string] [customName: string] [loreLine1: string] [loreLine2: string] [loreLine3: string] [loreLine4: string] [loreLine5: string]
+#### /replaceitemnbt \<target: target\> \<slotType: type\> \<slotId: int\> \<itemId: int\> [count: int] [auxValue: int] [enchantments: string] [customName: string] [lore1: string] [lore2: string] [lore3: string] [lore4: string] [lore5: string]
 
 The 2 necessary parameters to this command are the target selector (players only), the slot type, slot ID, and item ID.
   

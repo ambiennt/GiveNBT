@@ -10,12 +10,10 @@
         -> decltype(__VA_ARGS__(FWD(args)...)) \
     { return __VA_ARGS__(FWD(args)...); }
 
-void PreInit() {}
-void PostInit() {}
 void dllenter() {}
 void dllexit() {}
 
-bool fromNbtCommand = false;
+bool fromNbtCommand = false; // hack
 
 class CommandItem {
 public:
@@ -35,7 +33,7 @@ struct Enchantment {
     Enchantment() : id(0), level(0) {}
 };
 
-inline bool getBoolFromGameruleId(const int id) {
+inline bool getBoolFromGameruleId(GameRuleIds id) {
     auto gr = CallServerClassMethod<GameRules*>("?getGameRules@Level@@QEAAAEAVGameRules@@XZ", LocateService<Level>());
     return CallServerClassMethod<bool>("?getBool@GameRules@@QEBA_NUGameRuleId@@@Z", gr, &id);
 }
@@ -96,9 +94,9 @@ void getEnchantmentsFromString(const char* string, std::vector<Enchantment>& out
     }
 }
 
-THook(EnchantResult*, "?canEnchant@ItemEnchants@@QEAA?AUEnchantResult@@VEnchantmentInstance@@_N@Z",
-    ItemEnchants *self, EnchantmentInstance enchant, bool allowNonVanilla) {
-    auto ret = original(self, enchant, allowNonVanilla);
+TClasslessInstanceHook(EnchantResult*, "?canEnchant@ItemEnchants@@QEAA?AUEnchantResult@@VEnchantmentInstance@@_N@Z",
+    EnchantmentInstance enchant, bool allowNonVanilla) {
+    auto ret = original(this, enchant, allowNonVanilla);
     if (fromNbtCommand) {
         ret->result = EnchantResultType::Enchant; // force enchant
     }
@@ -171,7 +169,7 @@ public:
             }
 
             if (toEnderChest) {
-                playerEnderChest->addItemToFirstEmptySlot(is);
+                playerEnderChest->add(is);
             }
             else {
                 //drop item if inventory is full
@@ -181,7 +179,9 @@ public:
             }
         }
 
-        CallServerClassMethod<void>("?sendInventory@ServerPlayer@@UEAAX_N@Z", player, false);
+        if (!toEnderChest) {
+            player->sendInventory(false); // update inventory to client
+        }
 
         if (sendCommandFeedback) {
             /*output.success(
@@ -199,7 +199,7 @@ public:
         if (count < 0 || count > 32767) {
             return output.error("The count you have entered (" + stringifiedCount + ") is not within the allowed range of 0-32767");
         }
-        else if (aux < 0 || aux > 32767) {
+        if (aux < 0 || aux > 32767) {
             return output.error("The aux value you have entered (" + stringifiedAux + ") is not within the allowed range of 0-32767");
         }
 
@@ -225,7 +225,7 @@ public:
         //bool hasLore = !lore1.empty() || !lore2.empty() || !lore3.empty(); || !lore4.empty(); || !lore5.empty();
         std::string lore[5] = { lore1, lore2, lore3, lore4, lore5 };
         bool hasLore = !std::all_of(lore, std::end(lore), LIFT(std::empty));
-        bool sendCommandFeedback = getBoolFromGameruleId(17);
+        bool sendCommandFeedback = getBoolFromGameruleId(GameRuleIds::SendCommandFeedback);
 
         //loop through selector results
         //pass in parameter data to prevent unnecessary checks for each selected entity
@@ -239,7 +239,7 @@ public:
     static void setup(CommandRegistry *registry) {
         using namespace commands;
         registry->registerCommand(
-            "givenbt", "Gives an item with custom NBT.", CommandPermissionLevel::GameMasters, CommandFlagCheat, CommandFlagNone);
+            "givenbt", "Gives an item with custom NBT.", CommandPermissionLevel::GameMasters, CommandFlagNone, CommandFlagNone);
         registry->registerOverload<GiveNbtCommand>("givenbt",
             mandatory(&GiveNbtCommand::selector, "target"),
             mandatory(&GiveNbtCommand::id, "itemId"),
@@ -263,11 +263,12 @@ public:
 
     CommandSelector<Player> selector;
     enum class SlotType {
-        Mainhand    = 0,
-        Offhand     = 1,
-        Armor       = 2,
-        Inventory   = 3,
-        Enderchest  = 4
+        Mainhand       = 0,
+        Offhand        = 1,
+        Armor          = 2,
+        Inventory      = 3,
+        Enderchest     = 4,
+        Cursorselected = 5
     } type;
     int slotId = 0;
     int id = 0;
@@ -283,16 +284,17 @@ public:
 
     constexpr const char* containerTypeToString(SlotType v) {
         switch (v) {
-            case SlotType::Mainhand:    return "Mainhand";
-            case SlotType::Offhand:     return "Offhand";
-            case SlotType::Armor:       return "Armor";
-            case SlotType::Inventory:   return "Inventory";
-            case SlotType::Enderchest:  return "Enderchest";
-            default:                    return "Unknown";
+            case SlotType::Mainhand:        return "Mainhand";
+            case SlotType::Offhand:         return "Offhand";
+            case SlotType::Armor:           return "Armor";
+            case SlotType::Inventory:       return "Inventory";
+            case SlotType::Enderchest:      return "Enderchest";
+            case SlotType::Cursorselected:  return "Cursorselected";
+            default:                        return "Unknown";
         }
     }
 
-    void giveItem(Player *player, CommandOutput &output, CommandItem &cmi, ItemStack &is,
+    void replaceItem(Player *player, CommandOutput &output, CommandItem &cmi, ItemStack &is,
         bool hasEnchantments, bool hasName, bool hasLore, bool sendCommandFeedback) {
 
         int maxStackSize = is.getMaxStackSize();
@@ -328,41 +330,42 @@ public:
 
         switch (type) {
             case SlotType::Mainhand:
-                player->setCarriedItem(ItemStack::EMPTY_ITEM);
                 player->setCarriedItem(is);
                 break;
 
             case SlotType::Offhand:
-                player->setOffhandSlot(ItemStack::EMPTY_ITEM);
                 player->setOffhandSlot(is);
                 break;
 
             case SlotType::Armor:
-                player->setArmor((ArmorSlot) slotId, ItemStack::EMPTY_ITEM);
                 player->setArmor((ArmorSlot) slotId, is);
                 break;
 
             case SlotType::Inventory: // hotbar and inventory - slot ids 0-8 and 9-35 respectively
-                {     
-                    Inventory* playerInventory = CallServerClassMethod<PlayerInventory*>(
+                {
+                    auto playerInventory = CallServerClassMethod<PlayerInventory*>(
                         "?getSupplies@Player@@QEAAAEAVPlayerInventory@@XZ", player)->inventory.get();
-                    playerInventory->setItem(slotId, ItemStack::EMPTY_ITEM);
                     playerInventory->setItem(slotId, is);
                     break;
                 }
 
             case SlotType::Enderchest:
-                {     
-                    EnderChestContainer* playerEnderChest = player->getEnderChestContainer();
-                    playerEnderChest->setItem(slotId, ItemStack::EMPTY_ITEM);
+                {
+                    auto playerEnderChest = player->getEnderChestContainer();
                     playerEnderChest->setItem(slotId, is);
                     break;
                 }
+
+            case SlotType::Cursorselected:
+                player->setPlayerUIItem((PlayerUISlot) slotId, is);
+                break;
             
             default: break;
         }
 
-        CallServerClassMethod<void>("?sendInventory@ServerPlayer@@UEAAX_N@Z", player, false);
+        if (type != SlotType::Enderchest) {
+            player->sendInventory(false);
+        }
 
         if (sendCommandFeedback) {
             auto receivedItemMessage = TextPacket::createTextPacket<TextPacketType::SystemMessage>(
@@ -381,28 +384,38 @@ public:
                 if (slotId != 0) {
                     return output.error("The slot ID you have entered (" + stringifiedSlotId + ") must be exactly 0");
                 }
+                break;
 
             case SlotType::Armor:
                 if (slotId < 0 || slotId > 3) {
                     return output.error("The slot ID you have entered (" + stringifiedSlotId + ") is not within the allowed range of 0-3");
                 }
+                break;
                 
             case SlotType::Inventory:
                 if (slotId < 0 || slotId > 35) {
                     return output.error("The slot ID you have entered (" + stringifiedSlotId + ") is not within the allowed range of 0-35");
                 }
+                break;
 
             case SlotType::Enderchest:
                 if (slotId < 0 || slotId > 26) {
                     return output.error("The slot ID you have entered (" + stringifiedSlotId + ") is not within the allowed range of 0-26");
                 }
+                break;
+
+            case SlotType::Cursorselected:
+                if (slotId != 0) {
+                    return output.error("The slot ID you have entered (" + stringifiedSlotId + ") must be exactly 0");
+                }
+                break;
 
             default: break;
         }
         if (count < 1 || count > 64) {
             return output.error("The count you have entered (" + stringifiedCount + ") is not within the allowed range of 1-64");
         }
-        else if (aux < 0 || aux > 32767) {
+        if (aux < 0 || aux > 32767) {
             return output.error("The aux value you have entered (" + stringifiedAux + ") is not within the allowed range of 0-32767");
         }
 
@@ -423,10 +436,10 @@ public:
         bool hasName = !name.empty();
         std::string lore[5] = { lore1, lore2, lore3, lore4, lore5 };
         bool hasLore = !std::all_of(lore, std::end(lore), LIFT(std::empty));
-        bool sendCommandFeedback = getBoolFromGameruleId(17);
+        bool sendCommandFeedback = getBoolFromGameruleId(GameRuleIds::SendCommandFeedback);
 
         for (auto player : selectedEntities) {
-            giveItem(player, output, cmi, is, hasEnchantments, hasName, hasLore, sendCommandFeedback);
+            replaceItem(player, output, cmi, is, hasEnchantments, hasName, hasLore, sendCommandFeedback);
         }
         output.success(
             "§a[ReplaceItemNBT]§r Set * " + stringifiedCount + " of item with ID " + std::to_string(id) + ":" + stringifiedAux + " in slot " + containerTypeToString(type) + ":" + stringifiedSlotId + " for " + std::to_string(selectedEntities.count()) + (selectedEntities.count() == 1 ? " player" : " players"));
@@ -435,7 +448,7 @@ public:
     static void setup(CommandRegistry *registry) {
         using namespace commands;
         registry->registerCommand(
-            "replaceitemnbt", "sets an item with custom NBT in a specified equipment slot.", CommandPermissionLevel::GameMasters, CommandFlagCheat, CommandFlagNone);
+            "replaceitemnbt", "Sets an item with custom NBT in the specified equipment slot.", CommandPermissionLevel::GameMasters, CommandFlagNone, CommandFlagNone);
         
         commands::addEnum<SlotType>(registry, "slotType", {
             { "slot.weapon.mainhand", SlotType::Mainhand },
@@ -443,6 +456,7 @@ public:
             { "slot.armor", SlotType::Armor },
             { "slot.inventory", SlotType::Inventory },
             { "slot.enderchest", SlotType::Enderchest },
+            { "slot.ui.cursorselected", SlotType::Cursorselected }
         });
 
         registry->registerOverload<ReplaceItemNbtCommand>("replaceitemnbt",

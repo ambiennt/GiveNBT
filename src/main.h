@@ -11,9 +11,10 @@
 #include <Item/Enchant.h>
 #include <Item/EnchantResult.h>
 #include <Level/Level.h>
+#include <Level/GameRuleIds.h>
 #include <Container/SimpleContainer.h>
 #include <Container/Inventory.h>
 #include <Container/PlayerInventory.h>
 #include <Packet/TextPacket.h>
 
-DEF_LOGGER("GiveNBT");
+DEF_LOGGER("GiveNBTCommand");

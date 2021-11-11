@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.8)
-Project (GiveNBT)
+Project (GiveNBTCommand)
 
 # Change the name
-def_mod (GiveNBT LINK CommandSupport)
+def_mod (GiveNBTCommand LINK CommandSupport)

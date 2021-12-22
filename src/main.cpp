@@ -10,22 +10,6 @@
         -> decltype(__VA_ARGS__(FWD(args)...)) \
     { return __VA_ARGS__(FWD(args)...); }
 
-void dllenter() {}
-void dllexit() {}
-
-bool fromNbtCommand = false; // hack
-
-class CommandItem {
-public:
-    int version = 0;
-    int id = 0;
-    ItemStackBase *createInstance(ItemStackBase *is, int count, int aux, CommandOutput &output, bool exactAux) {
-        return CallServerClassMethod<ItemStackBase *>(
-            "?createInstance@CommandItem@@QEBA?AV?$optional@VItemInstance@@@std@@HHPEAVCommandOutput@@_N@Z", this, is,
-        count, aux, &output, exactAux);
-    }
-};
-
 struct Enchantment {
     short id;
     short level;
@@ -36,14 +20,6 @@ struct Enchantment {
 inline bool getBoolFromGameruleId(GameRuleIds id) {
     auto gr = CallServerClassMethod<GameRules*>("?getGameRules@Level@@QEAAAEAVGameRules@@XZ", LocateService<Level>());
     return CallServerClassMethod<bool>("?getBool@GameRules@@QEBA_NUGameRuleId@@@Z", gr, &id);
-}
-
-inline bool dropItem(Player *player, ItemStack const &is, bool random) {
-    return CallServerClassMethod<bool>("?drop@Player@@UEAA_NAEBVItemStack@@_N@Z", player, &is, false);
-}
-
-inline bool addItem(Player *player, ItemStack &is) {
-    return CallServerClassMethod<bool>("?add@Player@@UEAA_NAEAVItemStack@@@Z", player, &is);
 }
 
 bool checkEnchantmentString(std::string &enchantments, CommandOutput &output) {
@@ -97,9 +73,7 @@ void getEnchantmentsFromString(const char* string, std::vector<Enchantment>& out
 TClasslessInstanceHook(EnchantResult*, "?canEnchant@ItemEnchants@@QEAA?AUEnchantResult@@VEnchantmentInstance@@_N@Z",
     EnchantmentInstance enchant, bool allowNonVanilla) {
     auto ret = original(this, enchant, allowNonVanilla);
-    if (fromNbtCommand) {
-        ret->result = EnchantResultType::Enchant; // force enchant
-    }
+    ret->result = EnchantResultType::Enchant; // force enchant
     return ret;
 }
 
@@ -129,20 +103,17 @@ public:
         int maxStackSize = is.getMaxStackSize();
         int countNew = count;
         countNew = std::min(countNew, maxStackSize * playerInventorySlots);
-        
-        auto playerEnderChest = player->getEnderChestContainer();
 
         while (countNew > 0) {
-            int this_stack = std::min(maxStackSize, countNew);
-            cmi.createInstance(&is, this_stack, aux, output, false);
-            countNew -= this_stack;
+            int currentStack = std::min(maxStackSize, countNew);
+            cmi.createInstance(&is, currentStack, aux, output, false);
+            countNew -= currentStack;
 
             //apply NBT to created item
             if (hasEnchantments) {
                 EnchantmentInstance instance;
                 std::vector<Enchantment> enchantmentsVector;
                 getEnchantmentsFromString(enchantments.c_str(), enchantmentsVector);
-                fromNbtCommand = true;
 
                 //loop through results of getEnchantmentsFromString and apply to item instance
                 for (auto& enchant : enchantmentsVector) {
@@ -151,7 +122,6 @@ public:
                     instance.level = enchant.level; //tier of enchant
                     EnchantUtils::applyEnchant(is, instance, true);
                 }
-                fromNbtCommand = false;
             }
 
             if (hasName) {
@@ -162,19 +132,19 @@ public:
                 std::vector<std::string> loreVector = { lore1, lore2, lore3, lore4, lore5 };
 
                 //remove empty strings from right to left, break loop after iterating through a non-empty string
-                while (loreVector.size() > 0 && loreVector.back().empty()) {
+                while ((loreVector.size() > 0) && loreVector.back().empty()) {
                     loreVector.pop_back();
                 }
                 is.setCustomLore(loreVector);
             }
 
             if (toEnderChest) {
-                playerEnderChest->add(is);
+                player->getEnderChestContainer()->add(is);
             }
             else {
                 //drop item if inventory is full
-                if (!addItem(player, is)) {
-                    dropItem(player, is, false);
+                if (!player->addItem(is)) {
+                    player->dropItem(is, false);
                 }
             }
         }
@@ -213,7 +183,7 @@ public:
         //hack: create empty instance of an item to test ID and stack size
         //using id and aux from in-game command parameters
         CommandItem cmi;
-        cmi.id = id;
+        cmi.mId = id;
         ItemStack is;
         cmi.createInstance(&is, 0, aux, output, false);
         if (is.isNull()) {
@@ -307,13 +277,11 @@ public:
             EnchantmentInstance instance;
             std::vector<Enchantment> enchantmentsVector;
             getEnchantmentsFromString(enchantments.c_str(), enchantmentsVector);
-            fromNbtCommand = true;
             for (auto& enchant : enchantmentsVector) {
                 instance.type = (Enchant::Type) enchant.id;
                 instance.level = enchant.level;
                 EnchantUtils::applyEnchant(is, instance, true);
             }
-            fromNbtCommand = false;
         }
 
         if (hasName) {
@@ -322,7 +290,7 @@ public:
 
         if (hasLore) {
             std::vector<std::string> loreVector = { lore1, lore2, lore3, lore4, lore5 };
-            while (loreVector.size() > 0 && loreVector.back().empty()) {
+            while ((loreVector.size() > 0) && loreVector.back().empty()) {
                 loreVector.pop_back();
             }
             is.setCustomLore(loreVector);
@@ -342,19 +310,12 @@ public:
                 break;
 
             case SlotType::Inventory: // hotbar and inventory - slot ids 0-8 and 9-35 respectively
-                {
-                    auto playerInventory = CallServerClassMethod<PlayerInventory*>(
-                        "?getSupplies@Player@@QEAAAEAVPlayerInventory@@XZ", player)->inventory.get();
-                    playerInventory->setItem(slotId, is);
-                    break;
-                }
+                player->mInventory->inventory->setItem(slotId, is);
+                break;
 
             case SlotType::Enderchest:
-                {
-                    auto playerEnderChest = player->getEnderChestContainer();
-                    playerEnderChest->setItem(slotId, is);
-                    break;
-                }
+                player->getEnderChestContainer()->setItem(slotId, is);
+                break;
 
             case SlotType::Cursorselected:
                 player->setPlayerUIItem((PlayerUISlot) slotId, is);
@@ -425,7 +386,7 @@ public:
         }
 
         CommandItem cmi;
-        cmi.id = id;
+        cmi.mId = id;
         ItemStack is;
         cmi.createInstance(&is, 0, aux, output, false);
         if (is.isNull()) {
@@ -477,9 +438,10 @@ public:
     }
 };
 
-TClasslessInstanceHook(void, "?load@FunctionManager@@QEAAXAEAVResourcePackManager@@AEAVCommandRegistry@@@Z",
-    class ResourcePackManager &rpManager, class CommandRegistry &registry) {
-    GiveNbtCommand::setup(&registry);
-    ReplaceItemNbtCommand::setup(&registry);
-    original(this, rpManager, registry);
+void dllenter() {}
+void dllexit() {}
+void PreInit() {
+    Mod::CommandSupport::GetInstance().AddListener(SIG("loaded"), &GiveNbtCommand::setup);
+    Mod::CommandSupport::GetInstance().AddListener(SIG("loaded"), &ReplaceItemNbtCommand::setup);
 }
+void PostInit() {}

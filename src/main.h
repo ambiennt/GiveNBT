@@ -10,6 +10,7 @@
 #include <Item/ItemStack.h>
 #include <Item/Enchant.h>
 #include <Item/EnchantResult.h>
+#include <Item/CommandItem.h>
 #include <Level/Level.h>
 #include <Level/GameRuleIds.h>
 #include <Container/SimpleContainer.h>

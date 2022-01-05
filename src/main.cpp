@@ -17,8 +17,8 @@ struct Enchantment {
     Enchantment() : id(0), level(0) {}
 };
 
-inline bool getBoolFromGameruleId(GameRuleIds id) {
-    auto gr = CallServerClassMethod<GameRules*>("?getGameRules@Level@@QEAAAEAVGameRules@@XZ", LocateService<Level>());
+inline bool getBoolFromGameruleId(GameRulesIndex id) {
+    auto* gr = &LocateService<Level>()->getGameRules();
     return CallServerClassMethod<bool>("?getBool@GameRules@@QEBA_NUGameRuleId@@@Z", gr, &id);
 }
 
@@ -70,13 +70,6 @@ void getEnchantmentsFromString(const char* string, std::vector<Enchantment>& out
     }
 }
 
-TClasslessInstanceHook(EnchantResult*, "?canEnchant@ItemEnchants@@QEAA?AUEnchantResult@@VEnchantmentInstance@@_N@Z",
-    EnchantmentInstance enchant, bool allowNonVanilla) {
-    auto ret = original(this, enchant, allowNonVanilla);
-    ret->result = EnchantResultType::Enchant; // force enchant
-    return ret;
-}
-
 class GiveNbtCommand : public Command {
 public:
     GiveNbtCommand() { selector.setIncludeDeadPlayers(true); }
@@ -101,8 +94,7 @@ public:
         //loop through count to give more than 1 stack of the item
         const int playerInventorySlots = 36;
         int maxStackSize = is.getMaxStackSize();
-        int countNew = count;
-        countNew = std::min(countNew, maxStackSize * playerInventorySlots);
+        int countNew = std::min(count, maxStackSize * playerInventorySlots);
 
         while (countNew > 0) {
             int currentStack = std::min(maxStackSize, countNew);
@@ -111,6 +103,7 @@ public:
 
             //apply NBT to created item
             if (hasEnchantments) {
+                
                 EnchantmentInstance instance;
                 std::vector<Enchantment> enchantmentsVector;
                 getEnchantmentsFromString(enchantments.c_str(), enchantmentsVector);
@@ -195,7 +188,7 @@ public:
         //bool hasLore = !lore1.empty() || !lore2.empty() || !lore3.empty(); || !lore4.empty(); || !lore5.empty();
         std::string lore[5] = { lore1, lore2, lore3, lore4, lore5 };
         bool hasLore = !std::all_of(lore, std::end(lore), LIFT(std::empty));
-        bool sendCommandFeedback = getBoolFromGameruleId(GameRuleIds::SendCommandFeedback);
+        bool sendCommandFeedback = getBoolFromGameruleId(GameRulesIndex::SendCommandFeedback);
 
         //loop through selector results
         //pass in parameter data to prevent unnecessary checks for each selected entity
@@ -274,9 +267,11 @@ public:
         cmi.createInstance(&is, count, aux, output, false);
 
         if (hasEnchantments) {
+
             EnchantmentInstance instance;
             std::vector<Enchantment> enchantmentsVector;
             getEnchantmentsFromString(enchantments.c_str(), enchantmentsVector);
+
             for (auto& enchant : enchantmentsVector) {
                 instance.type = (Enchant::Type) enchant.id;
                 instance.level = enchant.level;
@@ -397,7 +392,7 @@ public:
         bool hasName = !name.empty();
         std::string lore[5] = { lore1, lore2, lore3, lore4, lore5 };
         bool hasLore = !std::all_of(lore, std::end(lore), LIFT(std::empty));
-        bool sendCommandFeedback = getBoolFromGameruleId(GameRuleIds::SendCommandFeedback);
+        bool sendCommandFeedback = getBoolFromGameruleId(GameRulesIndex::SendCommandFeedback);
 
         for (auto player : selectedEntities) {
             replaceItem(player, output, cmi, is, hasEnchantments, hasName, hasLore, sendCommandFeedback);

@@ -1,12 +1,7 @@
 #include "main.h"
 #include <dllentry.h>
 
-struct Enchantment {
-	int16_t id;
-	int16_t level;
-	Enchantment(int16_t id, int16_t level) : id(id), level(level) {}
-	Enchantment() : id(0), level(0) {}
-};
+namespace NBTCommandUtils {
 
 // remove whitespace from enchantment string, check valid characters
 // more parsing done in getEnchantmentsFromString
@@ -56,6 +51,8 @@ void getEnchantmentsFromString(const char* string, std::vector<Enchantment>& out
 	}
 }
 
+} // namespace NBTCommandUtils
+
 class GiveNbtCommand : public Command {
 public:
 
@@ -91,8 +88,8 @@ public:
 			if (hasEnchantments) {
 
 				EnchantmentInstance instance;
-				std::vector<Enchantment> enchantmentsVector;
-				getEnchantmentsFromString(this->enchantments.c_str(), enchantmentsVector);
+				std::vector<NBTCommandUtils::Enchantment> enchantmentsVector;
+				NBTCommandUtils::getEnchantmentsFromString(this->enchantments.c_str(), enchantmentsVector);
 
 				// loop through results of getEnchantmentsFromString and apply to item instance
 				for (auto& enchant : enchantmentsVector) {
@@ -118,9 +115,8 @@ public:
 
 			if (this->toEnderChest) {
 				auto enderChest = player->getEnderChestContainer();
-				if (enderChest) {
-					enderChest->add(item);
-				}
+				if (!enderChest) return;
+				enderChest->add(item);
 			}
 			else {
 				// drop item on ground if inventory is full
@@ -171,7 +167,7 @@ public:
 			return output.error("The aux value you have entered (" + auxStr + ") is not within the allowed range of 0-32767");
 		}
 
-		bool hasEnchantments = checkEnchantmentString(this->enchantments, output);
+		bool hasEnchantments = NBTCommandUtils::checkEnchantmentString(this->enchantments, output);
 
 		bool hasName = !this->name.empty();
 
@@ -265,8 +261,8 @@ public:
 		if (hasEnchantments) {
 
 			EnchantmentInstance instance;
-			std::vector<Enchantment> enchantmentsVector;
-			getEnchantmentsFromString(this->enchantments.c_str(), enchantmentsVector);
+			std::vector<NBTCommandUtils::Enchantment> enchantmentsVector;
+			NBTCommandUtils::getEnchantmentsFromString(this->enchantments.c_str(), enchantmentsVector);
 
 			for (auto& enchant : enchantmentsVector) {
 				instance.type = (Enchant::Type)enchant.id;
@@ -306,9 +302,8 @@ public:
 
 			case SlotType::Enderchest: {
 				auto enderChest = player->getEnderChestContainer();
-				if (enderChest) {
-					enderChest->setItem(this->slotId, item);
-				}
+				if (!enderChest) return;
+				enderChest->setItem(this->slotId, item);
 				break;
 			}
 
@@ -391,7 +386,7 @@ public:
 			return output.error("The aux value you have entered (" + auxStr + ") is not within the allowed range of 0-32767");
 		}
 
-		bool hasEnchantments = checkEnchantmentString(this->enchantments, output);
+		bool hasEnchantments = NBTCommandUtils::checkEnchantmentString(this->enchantments, output);
 
 		bool hasName = !this->name.empty();
 

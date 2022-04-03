@@ -18,4 +18,18 @@
 #include <Container/PlayerInventory.h>
 #include <Packet/TextPacket.h>
 
+namespace NBTCommandUtils {
+
+struct Enchantment {
+	int16_t id;
+	int16_t level;
+	Enchantment(int16_t id, int16_t level) : id(id), level(level) {}
+	Enchantment() : id(0), level(0) {}
+};
+
+bool checkEnchantmentString(std::string &enchantments, CommandOutput &output);
+void getEnchantmentsFromString(const char* string, std::vector<Enchantment>& out_split);
+
+}
+
 DEF_LOGGER("GiveNBTCommand");

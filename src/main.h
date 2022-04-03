@@ -8,11 +8,11 @@
 #include <Actor/Player.h>
 #include <mods/CommandSupport.h>
 #include <Item/ItemStack.h>
+#include <Item/CommandItem.h>
+#include <Item/ItemInstance.h>
 #include <Item/Enchant.h>
 #include <Item/EnchantResult.h>
-#include <Item/CommandItem.h>
 #include <Level/Level.h>
-#include <Level/GameRules.h>
 #include <Container/SimpleContainer.h>
 #include <Container/Inventory.h>
 #include <Container/PlayerInventory.h>

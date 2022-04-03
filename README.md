@@ -1,5 +1,5 @@
 # givenbt
-## give and replace items with custom NBT on BDS + ElementZero 1.16.20-.40
+## give and replace items with custom NBT on BDS + ElementZero 1.16.20
 
 ### givenbt syntax:
 #### /givenbt \<target: target\> \<itemId: int\> [count: int] [auxValue: int] [toEnderChest: boolean] [enchantments: string] [customName: string] [lore1: string] [lore2: string] [lore3: string] [lore4: string] [lore5: string]

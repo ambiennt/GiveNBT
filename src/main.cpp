@@ -171,13 +171,8 @@ public:
 
 		bool hasName = !this->name.empty();
 
-		std::array<std::string, 5> loreArr = { this->lore1, this->lore2, this->lore3, this->lore4, this->lore5 };
-		bool hasLore = false;
-		for (int32_t i = 0; i < loreArr.size(); i++) {
-			if (!loreArr[i].empty()) {
-				hasLore = true;
-			}
-		}
+		std::string fullLore(this->lore1 + this->lore2 + this->lore3 + this->lore4 + this->lore5);
+		bool hasLore = !fullLore.empty();
 
 		bool sendCommandFeedback = (output.type != CommandOutputType::NoFeedback);
 
@@ -390,13 +385,8 @@ public:
 
 		bool hasName = !this->name.empty();
 
-		std::array<std::string, 5> loreArr = { this->lore1, this->lore2, this->lore3, this->lore4, this->lore5 };
-		bool hasLore = false;
-		for (int32_t i = 0; i < loreArr.size(); i++) {
-			if (!loreArr[i].empty()) {
-				hasLore = true;
-			}
-		}
+		std::string fullLore(this->lore1 + this->lore2 + this->lore3 + this->lore4 + this->lore5);
+		bool hasLore = !fullLore.empty();
 		
 		bool sendCommandFeedback = (output.type != CommandOutputType::NoFeedback);
 

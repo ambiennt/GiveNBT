@@ -11,7 +11,6 @@
 #include <Item/CommandItem.h>
 #include <Item/ItemInstance.h>
 #include <Item/Enchant.h>
-#include <Item/EnchantResult.h>
 #include <Level/Level.h>
 #include <Container/SimpleContainer.h>
 #include <Container/Inventory.h>
@@ -29,6 +28,7 @@ struct Enchantment {
 
 bool checkEnchantmentString(std::string &enchantments, CommandOutput &output);
 void getEnchantmentsFromString(const char* string, std::vector<Enchantment>& out_split);
+void applyUnfilteredEnchant(ItemStackBase const& out, EnchantmentInstance const& enchant);
 
 }
 

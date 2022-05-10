@@ -51,6 +51,14 @@ void getEnchantmentsFromString(const char* string, std::vector<Enchantment>& out
 	}
 }
 
+void applyUnfilteredEnchant(ItemStackBase &out, EnchantmentInstance const& newEnchant) {
+	auto resultEnchants = out.constructItemEnchantsFromUserData(); // get current ItemEnchants for the given itemstack
+	int32_t activationIndex = EnchantUtils::determineActivation(newEnchant.mEnchantType); // get the proper index for ItemEnchants::mItemEnchants[3]
+	resultEnchants.mItemEnchants[activationIndex].push_back(newEnchant); // add newEnchant to current enchants
+	EnchantUtils::convertBookCheck(out); // convery newEnchant to a book enchant if the given itemstack is a book
+    out.saveEnchantsToUserData(resultEnchants); // apply newEnchant to the given itemstack
+}
+
 } // namespace NBTCommandUtils
 
 class GiveNbtCommand : public Command {
@@ -93,9 +101,9 @@ public:
 
 				// loop through results of getEnchantmentsFromString and apply to item instance
 				for (auto& enchant : enchantmentsVector) {
-					instance.type = (Enchant::Type)enchant.id; // type of enchant
-					instance.level = enchant.level; // tier of enchant
-					EnchantUtils::applyEnchant(item, instance, true);
+					instance.mEnchantType = (Enchant::Type)enchant.id; // type of enchant
+					instance.mLevel = enchant.level; // tier of enchant
+					NBTCommandUtils::applyUnfilteredEnchant(item, instance);
 				}
 			}
 
@@ -168,12 +176,8 @@ public:
 		}
 
 		bool hasEnchantments = NBTCommandUtils::checkEnchantmentString(this->enchantments, output);
-
 		bool hasName = !this->name.empty();
-
-		std::string fullLore(this->lore1 + this->lore2 + this->lore3 + this->lore4 + this->lore5);
-		bool hasLore = !fullLore.empty();
-
+		bool hasLore = (!this->lore1.empty() || !this->lore2.empty() || !this->lore3.empty() || !this->lore4.empty() || !this->lore5.empty());
 		bool sendCommandFeedback = (output.type != CommandOutputType::NoFeedback);
 
 		// loop through selector results
@@ -260,9 +264,9 @@ public:
 			NBTCommandUtils::getEnchantmentsFromString(this->enchantments.c_str(), enchantmentsVector);
 
 			for (auto& enchant : enchantmentsVector) {
-				instance.type = (Enchant::Type)enchant.id;
-				instance.level = enchant.level;
-				EnchantUtils::applyEnchant(item, instance, true);
+				instance.mEnchantType = (Enchant::Type)enchant.id;
+				instance.mLevel = enchant.level;
+				NBTCommandUtils::applyUnfilteredEnchant(item, instance);
 			}
 		}
 
@@ -382,12 +386,8 @@ public:
 		}
 
 		bool hasEnchantments = NBTCommandUtils::checkEnchantmentString(this->enchantments, output);
-
 		bool hasName = !this->name.empty();
-
-		std::string fullLore(this->lore1 + this->lore2 + this->lore3 + this->lore4 + this->lore5);
-		bool hasLore = !fullLore.empty();
-		
+		bool hasLore = (!this->lore1.empty() || !this->lore2.empty() || !this->lore3.empty() || !this->lore4.empty() || !this->lore5.empty());	
 		bool sendCommandFeedback = (output.type != CommandOutputType::NoFeedback);
 
 		for (auto player : selectedEntities) {
@@ -436,7 +436,8 @@ public:
 void dllenter() {}
 void dllexit() {}
 void PreInit() {
-	Mod::CommandSupport::GetInstance().AddListener(SIG("loaded"), &GiveNbtCommand::setup);
-	Mod::CommandSupport::GetInstance().AddListener(SIG("loaded"), &ReplaceItemNbtCommand::setup);
+	auto& cs = Mod::CommandSupport::GetInstance();
+	cs.AddListener(SIG("loaded"), &GiveNbtCommand::setup);
+	cs.AddListener(SIG("loaded"), &ReplaceItemNbtCommand::setup);
 }
 void PostInit() {}

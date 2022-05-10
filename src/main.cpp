@@ -6,7 +6,7 @@ namespace NBTCommandUtils {
 // remove whitespace from enchantment string, check valid characters
 // more parsing done in getEnchantmentsFromString
 bool checkEnchantmentString(std::string &enchantments, CommandOutput &output) {
-    enchantments.erase(std::remove(enchantments.begin(), enchantments.end(), ' '), enchantments.end());
+	enchantments.erase(std::remove(enchantments.begin(), enchantments.end(), ' '), enchantments.end());
 	if (!enchantments.empty()) {
 		if (enchantments.find_first_not_of("1234567890:,-") == std::string::npos) return true;
 		output.error("The specified enchantment string is invalid and has been ignored");
@@ -55,8 +55,8 @@ void applyUnfilteredEnchant(ItemStackBase &out, EnchantmentInstance const& newEn
 	auto resultEnchants = out.constructItemEnchantsFromUserData(); // get current ItemEnchants for the given itemstack
 	int32_t activationIndex = EnchantUtils::determineActivation(newEnchant.mEnchantType); // get the proper index for ItemEnchants::mItemEnchants[3]
 	resultEnchants.mItemEnchants[activationIndex].push_back(newEnchant); // add newEnchant to current enchants
-	EnchantUtils::convertBookCheck(out); // convery newEnchant to a book enchant if the given itemstack is a book
-    out.saveEnchantsToUserData(resultEnchants); // apply newEnchant to the given itemstack
+	EnchantUtils::convertBookCheck(out); // convert newEnchant to a book enchant if the given itemstack is a book
+	out.saveEnchantsToUserData(resultEnchants); // apply newEnchant to the given itemstack
 }
 
 } // namespace NBTCommandUtils
@@ -387,7 +387,7 @@ public:
 
 		bool hasEnchantments = NBTCommandUtils::checkEnchantmentString(this->enchantments, output);
 		bool hasName = !this->name.empty();
-		bool hasLore = (!this->lore1.empty() || !this->lore2.empty() || !this->lore3.empty() || !this->lore4.empty() || !this->lore5.empty());	
+		bool hasLore = (!this->lore1.empty() || !this->lore2.empty() || !this->lore3.empty() || !this->lore4.empty() || !this->lore5.empty());
 		bool sendCommandFeedback = (output.type != CommandOutputType::NoFeedback);
 
 		for (auto player : selectedEntities) {

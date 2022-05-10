@@ -28,7 +28,7 @@ struct Enchantment {
 
 bool checkEnchantmentString(std::string &enchantments, CommandOutput &output);
 void getEnchantmentsFromString(const char* string, std::vector<Enchantment>& out_split);
-void applyUnfilteredEnchant(ItemStackBase const& out, EnchantmentInstance const& enchant);
+void applyUnfilteredEnchant(ItemStackBase &out, EnchantmentInstance const &newEnchant);
 
 }
 
